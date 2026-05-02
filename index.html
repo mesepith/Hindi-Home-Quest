@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hindi Home Quest</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-labelledby="gameTitle">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">ह</div>
+          <div>
+            <p class="eyebrow">Learn Hindi</p>
+            <h1 id="gameTitle">Hindi Home Quest</h1>
+          </div>
+        </div>
+
+        <div class="top-actions" aria-label="Game status">
+          <div class="stat">
+            <strong id="scoreValue">0</strong>
+            <span>Stars</span>
+          </div>
+          <div class="stat">
+            <strong id="bestValue">0</strong>
+            <span>Best</span>
+          </div>
+          <button class="icon-button" id="soundToggle" type="button" aria-label="Turn sound off" title="Sound">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
+              <path d="M16 9c1.2 1.5 1.2 4.5 0 6"></path>
+              <path d="M18.5 6.5c2.7 3 2.7 8 0 11"></path>
+            </svg>
+          </button>
+          <button class="icon-button" id="restartButton" type="button" aria-label="Restart game" title="Restart">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4v6h6"></path>
+              <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="game-layout">
+        <aside class="quest-panel" aria-label="Quest map">
+          <div class="home-scene" aria-hidden="true">
+            <svg viewBox="0 0 360 240" role="img">
+              <defs>
+                <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#9bd7ff" />
+                  <stop offset="100%" stop-color="#fff4b7" />
+                </linearGradient>
+              </defs>
+              <rect width="360" height="240" rx="18" fill="url(#sky)" />
+              <circle cx="300" cy="48" r="24" fill="#ffd54f" />
+              <path d="M32 181c55-35 88-12 125-31 53-27 82-20 171 18v72H32Z" fill="#4dbb7d" />
+              <path d="M84 126 179 58l96 68v84H84Z" fill="#fffaf2" stroke="#2f4058" stroke-width="5" />
+              <path d="M66 130 179 48l114 82" fill="none" stroke="#dd5a42" stroke-width="13" stroke-linecap="round" />
+              <rect x="151" y="145" width="48" height="65" rx="4" fill="#7b4f2f" />
+              <rect x="99" y="143" width="38" height="33" rx="5" fill="#72c7ec" stroke="#2f4058" stroke-width="4" />
+              <rect x="217" y="143" width="38" height="33" rx="5" fill="#72c7ec" stroke="#2f4058" stroke-width="4" />
+              <path d="M115 196c22-20 55-18 79 0 26-27 74-23 96 8" fill="none" stroke="#155f46" stroke-width="7" stroke-linecap="round" />
+              <path d="M46 64h54l-27 38Z" fill="#f05f78" stroke="#2f4058" stroke-width="4" />
+              <path d="M73 103c-8 16-2 28 10 39" fill="none" stroke="#2f4058" stroke-width="3" stroke-linecap="round" />
+            </svg>
+          </div>
+
+          <div class="room-track" id="roomTrack" aria-label="Level rooms"></div>
+
+          <section class="phrase-box" aria-labelledby="phraseTitle">
+            <p class="section-kicker" id="phraseTitle">Try saying</p>
+            <p class="phrase-hindi" id="phraseHindi">नमस्ते!</p>
+            <p class="phrase-english" id="phraseEnglish">Hello!</p>
+          </section>
+        </aside>
+
+        <section class="play-area" aria-label="Hindi challenge">
+          <div class="round-status">
+            <div>
+              <span class="section-kicker" id="modeLabel">Word Match</span>
+              <p class="level-line">
+                Level <strong id="levelValue">1</strong>
+                <span aria-hidden="true">/</span>
+                Round <strong id="roundValue">1</strong>
+              </p>
+            </div>
+            <div class="heart-row" id="heartRow" aria-label="Focus hearts"></div>
+          </div>
+
+          <section class="prompt-box">
+            <div class="target-art" id="targetArt" aria-hidden="true"></div>
+            <div class="prompt-copy">
+              <p class="prompt-type" id="promptType">Find the match</p>
+              <h2 id="promptText">Loading...</h2>
+              <p id="promptHint" class="prompt-hint"></p>
+            </div>
+            <button class="listen-button" id="listenButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
+                <path d="M17 9.5c.9 1.2.9 3.8 0 5"></path>
+              </svg>
+              <span>Listen</span>
+            </button>
+          </section>
+
+          <div class="option-grid" id="optionGrid"></div>
+          <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+        </section>
+
+        <aside class="journal-panel" aria-label="Word journal">
+          <div class="journal-header">
+            <div>
+              <p class="section-kicker">Word Journal</p>
+              <h2>Words found</h2>
+            </div>
+            <span class="badge" id="journalCount">0</span>
+          </div>
+          <div class="progress-shell" aria-hidden="true">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <ul class="journal-list" id="journalList"></ul>
+        </aside>
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>
