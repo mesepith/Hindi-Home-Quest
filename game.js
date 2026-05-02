@@ -591,7 +591,7 @@ function renderPrompt() {
   els.promptType.textContent = mode.type;
   els.promptText.textContent = mode.prompt(word);
   els.promptHint.textContent = mode.hint(word);
-  els.targetArt.innerHTML = iconSvg(word.icon);
+  els.targetArt.innerHTML = promptBadgeSvg(mode.id);
   els.phraseHindi.textContent = word.sentence;
   els.phraseEnglish.textContent = word.sentenceEnglish;
 }
@@ -608,7 +608,10 @@ function renderOptions() {
     button.dataset.id = word.id;
     button.setAttribute("aria-label", `${main}, ${sub}`);
     button.innerHTML = `
-      <span class="option-icon" aria-hidden="true">${iconSvg(word.icon)}</span>
+      <span class="option-icon" aria-hidden="true">
+        <span class="option-icon-cover">?</span>
+        <span class="option-icon-art">${iconSvg(word.icon)}</span>
+      </span>
       <span class="option-copy">
         <span class="option-main">${main}</span>
         <span class="option-sub">${sub}</span>
@@ -678,6 +681,7 @@ function updateOptionStates(selectedId, correct) {
   const buttons = els.optionGrid.querySelectorAll(".option-card");
   buttons.forEach((button) => {
     button.disabled = true;
+    button.classList.add("revealed");
     const isTarget = button.dataset.id === state.currentTarget.id;
     const isSelected = button.dataset.id === selectedId;
     if (isTarget) button.classList.add("correct");
@@ -1000,6 +1004,25 @@ function shuffle(items) {
     [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
   }
   return copy;
+}
+
+function promptBadgeSvg(modeId) {
+  const badges = {
+    letter: ["अ", "#e85f6f", "#fff0f2"],
+    meaning: ["हिंदी", "#047a8a", "#e9fbf7"],
+    sound: ["♪", "#4457a6", "#eef1ff"],
+    word: ["ह", "#f4b43f", "#fff7df"],
+  };
+  const [label, accent, fill] = badges[modeId] || badges.word;
+
+  return `
+    <svg class="prompt-badge" viewBox="0 0 96 96" role="img">
+      <rect x="10" y="10" width="76" height="76" rx="14" fill="${fill}" stroke="#1f2a37" stroke-width="4" />
+      <circle cx="72" cy="24" r="8" fill="${accent}" />
+      <path d="M25 70c12-9 34-9 46 0" fill="none" stroke="${accent}" stroke-width="6" stroke-linecap="round" />
+      <text x="48" y="${label.length > 1 ? 54 : 58}" text-anchor="middle" font-size="${label.length > 1 ? 22 : 42}" font-family="serif" font-weight="900" fill="#1f2a37">${label}</text>
+    </svg>
+  `;
 }
 
 function iconSvg(type) {

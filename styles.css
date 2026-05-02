@@ -371,6 +371,11 @@ h1 {
   height: 70px;
 }
 
+.prompt-badge {
+  width: 76px;
+  height: 76px;
+}
+
 .word-icon * {
   vector-effect: non-scaling-stroke;
 }
@@ -449,13 +454,51 @@ h1 {
 }
 
 .option-icon {
+  position: relative;
   display: grid;
   width: 72px;
   height: 72px;
   place-items: center;
+  overflow: hidden;
   background: #f7fbfc;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+.option-icon-cover,
+.option-icon-art {
+  grid-area: 1 / 1;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.option-icon-cover {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: #fff;
+  background: var(--teal);
+  border-radius: 50%;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.option-icon-art {
+  display: grid;
+  opacity: 0;
+  transform: scale(0.76);
+}
+
+.option-card.revealed .option-icon-cover {
+  opacity: 0;
+  transform: scale(1.18);
+}
+
+.option-card.revealed .option-icon-art {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .option-copy {
