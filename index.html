@@ -3,8 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Hindi Home Quest</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=10" />
   </head>
   <body>
     <main class="game-shell" aria-labelledby="gameTitle">
@@ -26,7 +29,7 @@
             <strong id="bestValue">0</strong>
             <span>Best</span>
           </div>
-          <button class="icon-button" id="soundToggle" type="button" aria-label="Turn sound off" title="Sound">
+          <button class="icon-button" id="soundToggle" type="button" aria-label="Play current word" title="Play word">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
               <path d="M16 9c1.2 1.5 1.2 4.5 0 6"></path>
@@ -124,6 +127,9 @@
       </section>
     </main>
 
-    <script src="game.js"></script>
+    <div class="audio-library" id="audioLibrary" aria-hidden="true">
+      <audio id="pronunciationAudio" preload="none" playsinline></audio>
+    </div>
+    <script src="game.js?v=10"></script>
   </body>
 </html>

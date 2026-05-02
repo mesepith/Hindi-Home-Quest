@@ -301,6 +301,13 @@ const WORDS = [
 const ROOMS = ["Porch", "Kitchen", "Study", "Bedroom", "Yard", "Sky"];
 const ROUND_GOAL = 10;
 const MAX_HEARTS = 3;
+const AUDIO_DIR = "assets/audio";
+const AUDIO_FORMATS = [
+  { ext: "m4a", type: "audio/mp4" },
+  { ext: "mp3", type: "audio/mpeg" },
+  { ext: "ogg", type: 'audio/ogg; codecs="opus"' },
+];
+const HINDI_LANG = "hi-IN";
 
 const MODES = [
   {
@@ -342,6 +349,7 @@ const MODES = [
 ];
 
 const els = {
+  audioLibrary: document.querySelector("#audioLibrary"),
   best: document.querySelector("#bestValue"),
   feedback: document.querySelector("#feedback"),
   heartRow: document.querySelector("#heartRow"),
@@ -357,6 +365,7 @@ const els = {
   promptHint: document.querySelector("#promptHint"),
   promptText: document.querySelector("#promptText"),
   promptType: document.querySelector("#promptType"),
+  pronunciationAudio: document.querySelector("#pronunciationAudio"),
   restart: document.querySelector("#restartButton"),
   roomTrack: document.querySelector("#roomTrack"),
   round: document.querySelector("#roundValue"),
@@ -382,16 +391,27 @@ const state = {
 };
 
 let voicesLoaded = false;
+let cachedVoices = [];
+let fallbackSpeechTimer;
+let currentPronunciationAudio;
+let activePronunciationId = "";
+let pendingPronunciationId = "";
+let preferredAudioFormat;
 let audioContext;
 
 function boot() {
   renderRooms();
   bindEvents();
+  setupAudioPlayer();
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", () => {
       voicesLoaded = true;
-    };
+      loadVoices();
+      updateSpeechUi();
+    });
   }
+  updateSpeechUi();
   startGame();
 }
 
@@ -401,9 +421,18 @@ function bindEvents() {
     if (button) selectOption(button.dataset.id);
   });
 
-  els.listen.addEventListener("click", () => speak(state.currentTarget));
+  els.listen.addEventListener("click", () => {
+    playPronunciation(state.currentTarget, { manual: true });
+  });
+  els.listen.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    playPronunciation(state.currentTarget, { manual: true });
+  });
   els.restart.addEventListener("click", startGame);
-  els.sound.addEventListener("click", toggleSound);
+  els.sound.addEventListener("click", () => {
+    playPronunciation(state.currentTarget, { manual: true });
+  });
 
   window.addEventListener("keydown", (event) => {
     const number = Number(event.key);
@@ -436,8 +465,9 @@ function nextRound() {
   state.currentOptions = buildOptions(state.currentTarget, state.currentMode);
   renderAll();
 
-  if (state.currentMode.id === "sound") {
-    window.setTimeout(() => speak(state.currentTarget), 350);
+  if (state.currentMode.id === "sound" && state.soundOn && document.hasFocus()) {
+    els.feedback.textContent = "Tap Listen to hear the Hindi word.";
+    els.feedback.className = "feedback";
   }
 }
 
@@ -660,27 +690,258 @@ function addLearned(word) {
   state.learned = [word, ...state.learned.filter((item) => item.id !== word.id)];
 }
 
-function toggleSound() {
-  state.soundOn = !state.soundOn;
-  els.sound.setAttribute("aria-label", state.soundOn ? "Turn sound off" : "Turn sound on");
-  els.sound.classList.toggle("muted", !state.soundOn);
-  if (state.soundOn) speak(state.currentTarget);
+function playPronunciation(word, options = {}) {
+  if (!state.soundOn) return;
+
+  const audio = els.pronunciationAudio;
+  const source = getPronunciationSource(word);
+  if (!audio || !source) {
+    speak(word, options);
+    return;
+  }
+
+  const isSameClipPlaying =
+    activePronunciationId === word.id && (pendingPronunciationId === word.id || (!audio.paused && !audio.ended));
+
+  if (isSameClipPlaying) {
+    pulseListenButton();
+    return;
+  }
+
+  stopPronunciation();
+  currentPronunciationAudio = audio;
+  activePronunciationId = word.id;
+  pendingPronunciationId = word.id;
+  audio.muted = false;
+  audio.volume = 1;
+  audio.src = source;
+  audio.load();
+
+  let playPromise;
+  try {
+    playPromise = audio.play();
+  } catch (error) {
+    currentPronunciationAudio = null;
+    activePronunciationId = "";
+    pendingPronunciationId = "";
+    speak(word, options);
+    return;
+  }
+  pulseListenButton();
+  if (options.manual) {
+    els.feedback.textContent = `Playing recorded Hindi: ${word.hindi} (${word.translit})`;
+    els.feedback.className = "feedback";
+  }
+
+  if (playPromise) {
+    playPromise.then(() => {
+      if (pendingPronunciationId === word.id) pendingPronunciationId = "";
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    }).catch((error) => {
+      if (currentPronunciationAudio === audio) currentPronunciationAudio = null;
+      if (activePronunciationId === word.id) activePronunciationId = "";
+      if (pendingPronunciationId === word.id) pendingPronunciationId = "";
+      if (options.manual) {
+        const reason = error?.name ? ` (${error.name})` : "";
+        els.feedback.textContent = `Recorded audio did not start${reason}. Trying browser speech fallback.`;
+        els.feedback.className = "feedback careful";
+      }
+      speak(word, options);
+    });
+  }
 }
 
-function speak(word) {
-  if (!state.soundOn || !("speechSynthesis" in window)) return;
+function stopPronunciation() {
+  if (!currentPronunciationAudio) return;
+
+  currentPronunciationAudio.pause();
+  try {
+    currentPronunciationAudio.currentTime = 0;
+  } catch (error) {
+    currentPronunciationAudio.load();
+  }
+  currentPronunciationAudio = null;
+  activePronunciationId = "";
+  pendingPronunciationId = "";
+}
+
+function setupAudioPlayer() {
+  preferredAudioFormat = chooseAudioFormat();
+  els.pronunciationAudio.addEventListener("ended", () => {
+    currentPronunciationAudio = null;
+    activePronunciationId = "";
+    pendingPronunciationId = "";
+    els.listen.classList.remove("is-playing");
+    els.sound.classList.remove("is-playing");
+  });
+  els.pronunciationAudio.addEventListener("error", () => {
+    currentPronunciationAudio = null;
+    activePronunciationId = "";
+    pendingPronunciationId = "";
+    els.listen.classList.remove("is-playing");
+    els.sound.classList.remove("is-playing");
+    speak(state.currentTarget, { manual: true });
+  });
+}
+
+function chooseAudioFormat() {
+  const probe = document.createElement("audio");
+  if (!probe.canPlayType) return AUDIO_FORMATS[1];
+  return AUDIO_FORMATS.find((format) => probe.canPlayType(format.type)) || AUDIO_FORMATS[1];
+}
+
+function getPronunciationSource(word) {
+  const format = preferredAudioFormat || chooseAudioFormat();
+  return `${AUDIO_DIR}/${word.id}.${format.ext}`;
+}
+
+function reportAudioSupport() {
+  const probe = document.createElement("audio");
+  if (!probe.canPlayType) return "No HTML5 audio support detected.";
+
+  return AUDIO_FORMATS.map((format) => `${format.ext}:${probe.canPlayType(format.type) || "no"}`).join(" ");
+}
+
+function updateSpeechUi() {
+  els.listen.disabled = !state.soundOn;
+  if (!state.soundOn) {
+    els.listen.title = "Sound is off";
+    return;
+  }
+  els.listen.title = `Plays packaged Hindi audio. ${reportAudioSupport()}`;
+  els.sound.setAttribute("aria-label", "Play current word");
+  els.sound.title = "Play current word";
+}
+
+function pulseListenButton() {
+  els.listen.classList.remove("is-playing");
+  els.sound.classList.remove("is-playing");
+  void els.listen.offsetWidth;
+  els.listen.classList.add("is-playing");
+  els.sound.classList.add("is-playing");
+}
+
+function speak(word, options = {}) {
+  if (!state.soundOn) return;
+
+  if (!("speechSynthesis" in window)) {
+    els.feedback.textContent = "Speech is not available in this browser.";
+    els.feedback.className = "feedback careful";
+    return;
+  }
+
+  const synth = window.speechSynthesis;
+  const hindiVoice = findHindiVoice();
+  let started = false;
+
+  window.clearTimeout(fallbackSpeechTimer);
+
+  if (voicesLoaded && !hindiVoice) {
+    speakFallback(word);
+    return;
+  }
 
   const utterance = new SpeechSynthesisUtterance(word.hindi);
-  const voices = window.speechSynthesis.getVoices();
-  const hindiVoice = voices.find((voice) => /hi|hindi|india/i.test(`${voice.lang} ${voice.name}`));
-
-  utterance.lang = "hi-IN";
-  utterance.rate = 0.82;
+  utterance.lang = HINDI_LANG;
+  utterance.rate = 0.78;
   utterance.pitch = 1.05;
-  if (hindiVoice || voicesLoaded) utterance.voice = hindiVoice || null;
+  utterance.volume = 1;
+  if (hindiVoice) utterance.voice = hindiVoice;
 
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  utterance.onstart = () => {
+    started = true;
+  };
+  utterance.onerror = () => {
+    if (!started) speakFallback(word);
+  };
+  utterance.onend = () => {
+    window.clearTimeout(fallbackSpeechTimer);
+  };
+
+  if (options.manual) {
+    els.feedback.textContent = hindiVoice
+      ? `Using browser speech fallback: ${word.hindi} (${word.translit})`
+      : `Trying browser speech fallback for ${word.hindi}.`;
+    els.feedback.className = "feedback";
+  }
+
+  try {
+    if (synth.paused) synth.resume();
+
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+      window.setTimeout(() => synth.speak(utterance), 90);
+    } else {
+      synth.speak(utterance);
+    }
+
+    fallbackSpeechTimer = window.setTimeout(() => {
+      if (!started && !synth.speaking) speakFallback(word);
+    }, hindiVoice || !voicesLoaded ? 1800 : 900);
+  } catch (error) {
+    speakFallback(word);
+  }
+}
+
+function speakFallback(word) {
+  if (!state.soundOn || !("speechSynthesis" in window)) return;
+
+  const synth = window.speechSynthesis;
+  const fallbackVoice = findFallbackVoice();
+  const utterance = new SpeechSynthesisUtterance(word.translit);
+
+  window.clearTimeout(fallbackSpeechTimer);
+  utterance.lang = fallbackVoice?.lang || "en-US";
+  utterance.rate = 0.68;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  if (fallbackVoice) utterance.voice = fallbackVoice;
+  utterance.onerror = () => {
+    els.feedback.textContent = "Speech did not start on this device.";
+    els.feedback.className = "feedback careful";
+  };
+
+  try {
+    if (synth.paused) synth.resume();
+    if (synth.speaking || synth.pending) synth.cancel();
+    synth.speak(utterance);
+    els.feedback.textContent = `Hindi voice unavailable here, playing guide sound: ${word.translit}.`;
+    els.feedback.className = "feedback careful";
+  } catch (error) {
+    els.feedback.textContent = "Speech did not start on this device.";
+    els.feedback.className = "feedback careful";
+  }
+}
+
+function loadVoices() {
+  if (!("speechSynthesis" in window)) return [];
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length) {
+    cachedVoices = voices;
+    voicesLoaded = true;
+  }
+  return cachedVoices;
+}
+
+function findHindiVoice() {
+  const voices = loadVoices();
+  return (
+    voices.find((voice) => /^hi([-_]|$)/i.test(voice.lang)) ||
+    voices.find((voice) => /hindi/i.test(voice.name)) ||
+    null
+  );
+}
+
+function findFallbackVoice() {
+  const voices = loadVoices();
+  return (
+    voices.find((voice) => /^en-IN$/i.test(voice.lang)) ||
+    voices.find((voice) => /^en-US$/i.test(voice.lang)) ||
+    voices.find((voice) => /^en/i.test(voice.lang)) ||
+    voices.find((voice) => voice.default) ||
+    null
+  );
 }
 
 function playTone(success) {

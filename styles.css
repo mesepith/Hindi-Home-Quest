@@ -32,6 +32,17 @@ body {
     sans-serif;
 }
 
+.audio-library {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 button {
   font: inherit;
 }
@@ -172,6 +183,18 @@ h1 {
 .option-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 22px rgba(31, 42, 55, 0.14);
+}
+
+.icon-button:active,
+.listen-button:active,
+.option-card:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 4px 10px rgba(31, 42, 55, 0.12);
+}
+
+.icon-button.is-playing,
+.listen-button.is-playing {
+  animation: listenPulse 420ms ease-out;
 }
 
 .icon-button:focus-visible,
@@ -411,12 +434,14 @@ h1 {
   color: #103d2f;
   background: #e7faef;
   border-color: var(--leaf);
+  animation: correctPop 360ms ease-out;
 }
 
 .option-card.wrong {
   color: #6b1723;
   background: #fff0f2;
   border-color: var(--coral);
+  animation: wrongShake 360ms ease-out;
 }
 
 .option-card.dimmed {
@@ -663,5 +688,55 @@ h1 {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@keyframes listenPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(68, 87, 166, 0.34);
+  }
+
+  45% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 10px rgba(68, 87, 166, 0.12);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 16px rgba(68, 87, 166, 0);
+  }
+}
+
+@keyframes correctPop {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.035);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes wrongShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  55% {
+    transform: translateX(4px);
+  }
+
+  78% {
+    transform: translateX(-2px);
   }
 }
